@@ -16,6 +16,9 @@ pnpm-debug.log*
 bin/
 .cache/
 
+# Local/private operator notes
+docs/LOCAL_*.md
+
 # Go build/test artifacts
 *.test
 *.out
