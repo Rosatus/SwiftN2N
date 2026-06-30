@@ -88,9 +88,10 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Prepare edge binary
+      - name: Build frontend assets
         shell: bash
-        run: ./scripts/prepare-edge.sh "${{ matrix.target_os }}" "${{ matrix.target_arch }}"
+        run: npm run build
+        working-directory: frontend
 
       - name: Test
         shell: bash
@@ -100,6 +101,10 @@ jobs:
         shell: bash
         run: npm audit --audit-level=high
         working-directory: frontend
+
+      - name: Prepare edge binary
+        shell: bash
+        run: ./scripts/prepare-edge.sh "${{ matrix.target_os }}" "${{ matrix.target_arch }}"
 
       - name: Build SwiftN2N
         shell: bash

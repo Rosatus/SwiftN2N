@@ -29,7 +29,11 @@ case "$target_os" in
     mkdir -p "$(dirname "$edge_dst")"
     install -m 0755 "$edge_src" "$edge_dst"
     cp -a "${repo_root}/build/bin/${app_name}.exe" "${repo_root}/build/bin/bin" "$stage_dir/"
-    python3 - "$repo_root" "$stage_dir" "${repo_root}/dist/${archive_base}.zip" <<'PY'
+    python_bin="python3"
+    if ! command -v "$python_bin" >/dev/null 2>&1; then
+      python_bin="python"
+    fi
+    "$python_bin" - "$repo_root" "$stage_dir" "${repo_root}/dist/${archive_base}.zip" <<'PY'
 import pathlib
 import sys
 import zipfile

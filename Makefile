@@ -12,7 +12,7 @@ VERSION ?= dev
 doctor:
 	wails doctor
 
-test:
+test: frontend-build
 	go test ./...
 
 frontend-install:
