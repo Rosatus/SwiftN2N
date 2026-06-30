@@ -18,6 +18,8 @@ bin/
 
 # Local/private operator notes
 docs/LOCAL_*.md
+docs/WINDOWS_TESTING.md
+docs/WINDOWS_TESTING_*.md
 
 # Go build/test artifacts
 *.test
