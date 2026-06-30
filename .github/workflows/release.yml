@@ -1,0 +1,131 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-amd64
+            runner: ubuntu-24.04
+            target_os: linux
+            target_arch: amd64
+            platform: linux/amd64
+            wails_flags: -clean -platform linux/amd64 -tags webkit2_41
+          - name: windows-amd64
+            runner: windows-latest
+            target_os: windows
+            target_arch: amd64
+            platform: windows/amd64
+            wails_flags: -clean -platform windows/amd64
+          - name: darwin-amd64
+            runner: macos-13
+            target_os: darwin
+            target_arch: amd64
+            platform: darwin/amd64
+            wails_flags: -clean -platform darwin/amd64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Linux build dependencies
+        if: matrix.target_os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            dpkg-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            pkg-config
+
+      - name: Check native build tools
+        shell: bash
+        run: |
+          go version
+          node --version
+          npm --version
+          cmake --version || true
+
+      - name: Install Wails CLI
+        shell: bash
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: npm ci
+        working-directory: frontend
+
+      - name: Prepare edge binary
+        shell: bash
+        run: ./scripts/prepare-edge.sh "${{ matrix.target_os }}" "${{ matrix.target_arch }}"
+
+      - name: Test
+        shell: bash
+        run: go test ./...
+
+      - name: Frontend audit
+        shell: bash
+        run: npm audit --audit-level=high
+        working-directory: frontend
+
+      - name: Build SwiftN2N
+        shell: bash
+        run: wails build ${{ matrix.wails_flags }}
+
+      - name: Package
+        id: package
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME}"
+          else
+            version="${GITHUB_SHA::7}"
+          fi
+          ./scripts/package-release.sh "${{ matrix.target_os }}" "${{ matrix.target_arch }}" "$version" | tee /tmp/swiftn2n-package-path
+          echo "archive=$(tail -n 1 /tmp/swiftn2n-package-path)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SwiftN2N-${{ matrix.target_os }}-${{ matrix.target_arch }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+
+      - name: Upload release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.package.outputs.archive }}

@@ -1,0 +1,28 @@
+# Wails build output
+build/bin/
+dist/
+frontend/dist/
+frontend/package.json.md5
+
+# Node dependencies and logs
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local edge binaries
+bin/
+.cache/
+
+# Go build/test artifacts
+*.test
+*.out
+coverage.out
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
