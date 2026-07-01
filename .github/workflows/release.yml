@@ -163,7 +163,7 @@ jobs:
           echo "archive=$(tail -n 1 /tmp/swiftn2n-package-path)" >> "$GITHUB_OUTPUT"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SwiftN2N-${{ matrix.target_os }}-${{ matrix.target_arch }}
           path: |
