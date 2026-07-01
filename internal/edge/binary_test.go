@@ -47,7 +47,7 @@ func TestResolveConfiguredPathUsesBundledByDefault(t *testing.T) {
 	if resolved.Custom {
 		t.Fatalf("resolved path should not be custom by default: %+v", resolved)
 	}
-	if resolved.Path != bundled {
+	if canonicalTestPath(t, resolved.Path) != canonicalTestPath(t, bundled) {
 		t.Fatalf("Path = %q, want %q", resolved.Path, bundled)
 	}
 
@@ -58,9 +58,18 @@ func TestResolveConfiguredPathUsesBundledByDefault(t *testing.T) {
 	if !resolved.Custom {
 		t.Fatalf("resolved path should be custom with explicit override: %+v", resolved)
 	}
-	if resolved.Path != custom {
+	if canonicalTestPath(t, resolved.Path) != canonicalTestPath(t, custom) {
 		t.Fatalf("Path = %q, want %q", resolved.Path, custom)
 	}
+}
+
+func canonicalTestPath(t *testing.T, path string) string {
+	t.Helper()
+	canonical, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(%q) returned error: %v", path, err)
+	}
+	return canonical
 }
 
 func TestBundledCandidatesPreferExecutableDirectory(t *testing.T) {

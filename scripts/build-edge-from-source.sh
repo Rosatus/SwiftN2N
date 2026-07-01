@@ -45,6 +45,7 @@ fi
 rm -rf "$build_dir"
 cmake -S "$cache_dir" -B "$build_dir" \
   -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
   -DN2N_OPTION_USE_OPENSSL=OFF \
   -DN2N_OPTION_USE_PCAPLIB=OFF \
   -DN2N_OPTION_USE_ZSTD=OFF
