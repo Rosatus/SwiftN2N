@@ -73,12 +73,25 @@ func (m *Manager) Status() Status {
 }
 
 func (m *Manager) Start(config Config) (Status, error) {
-	edgePath, spec, err := m.prepareCommand(config)
+	m.mu.Lock()
+	if m.cmd != nil && m.cmd.Process != nil {
+		status := m.status
+		m.mu.Unlock()
+		return status, ErrAlreadyRunning
+	}
+	m.mu.Unlock()
+
+	edgePath, spec, usesCustomEdge, err := m.prepareCommand(config)
 	if err != nil {
 		status := m.setStatus(StateFailed, err.Error(), 0, err.Error(), edgePath)
 		return status, err
 	}
 	if !platform.IsElevated() && platform.CanUsePrivilegedHelper() {
+		if usesCustomEdge && !CustomEdgePathAllowedForHelper() {
+			err := errors.New("custom edge binaries are disabled for the privileged helper; use the bundled edge or set SWIFTN2N_ALLOW_CUSTOM_EDGE_PATH=1 for development")
+			status := m.setStatus(StateFailed, err.Error(), 0, err.Error(), edgePath)
+			return status, err
+		}
 		return m.startWithHelper(config, edgePath, spec)
 	}
 	if !platform.IsElevated() {
@@ -323,14 +336,14 @@ func (m *Manager) stopPrivilegedHelper(pid int) error {
 }
 
 func (m *Manager) Version(config Config) (string, error) {
-	edgePath, err := ResolvePath(config.EdgePath)
+	resolved, err := ResolveConfiguredPath(config)
 	if err != nil {
 		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, edgePath, "-h")
+	cmd := exec.CommandContext(ctx, resolved.Path, "-h")
 	platform.ConfigureProcess(cmd)
 	output, err := cmd.CombinedOutput()
 	if ctx.Err() == context.DeadlineExceeded {
@@ -347,11 +360,14 @@ func (m *Manager) Validate(config Config) error {
 	if _, err := BuildCommand(config); err != nil {
 		return err
 	}
-	path, err := ResolvePath(config.EdgePath)
+	resolved, err := ResolveConfiguredPath(config)
 	if err != nil {
 		return err
 	}
-	if !platform.IsExecutable(path) {
+	if resolved.Custom && !platform.IsElevated() && platform.CanUsePrivilegedHelper() && !CustomEdgePathAllowedForHelper() {
+		return errors.New("custom edge binaries are disabled for the privileged helper; use the bundled edge")
+	}
+	if !platform.IsExecutable(resolved.Path) {
 		return errors.New("edge binary is not executable")
 	}
 	return nil
@@ -369,11 +385,14 @@ func (m *Manager) Environment(config Config) EnvironmentStatus {
 	if !status.Elevated && !status.HelperAvailable {
 		status.Missing = append(status.Missing, "administrator/root privileges or pkexec helper")
 	}
-	if path, err := ResolvePath(config.EdgePath); err == nil {
+	if resolved, err := ResolveConfiguredPath(config); err == nil {
 		status.EdgeFound = true
-		status.EdgePath = path
-		if !platform.IsExecutable(path) {
+		status.EdgePath = resolved.Path
+		if !platform.IsExecutable(resolved.Path) {
 			status.Missing = append(status.Missing, "edge executable permission")
+		}
+		if resolved.Custom && !status.Elevated && status.HelperAvailable && !CustomEdgePathAllowedForHelper() {
+			status.Missing = append(status.Missing, "bundled edge binary or explicit custom-edge development override")
 		}
 		if version, err := m.Version(config); err == nil {
 			status.EdgeVersion = firstMeaningfulLine(version)
@@ -397,16 +416,16 @@ func (m *Manager) Environment(config Config) EnvironmentStatus {
 	return status
 }
 
-func (m *Manager) prepareCommand(config Config) (string, CommandSpec, error) {
-	edgePath, err := ResolvePath(config.EdgePath)
+func (m *Manager) prepareCommand(config Config) (string, CommandSpec, bool, error) {
+	resolved, err := ResolveConfiguredPath(config)
 	if err != nil {
-		return "", CommandSpec{}, err
+		return "", CommandSpec{}, false, err
 	}
 	spec, err := BuildCommand(config)
 	if err != nil {
-		return edgePath, CommandSpec{}, err
+		return resolved.Path, CommandSpec{}, resolved.Custom, err
 	}
-	return edgePath, spec, nil
+	return resolved.Path, spec, resolved.Custom, nil
 }
 
 func (m *Manager) scanPipe(stream string, reader io.Reader) {

@@ -1,10 +1,11 @@
 import {FormField} from './FormField';
-import type {EdgeConfig} from '../lib/edgeConfig';
+import type {EdgeConfig, EnvironmentStatus} from '../lib/edgeConfig';
 
 type AdvancedEdgeOptionsProps = {
     config: EdgeConfig;
     routesText: string;
     rulesText: string;
+    environment: EnvironmentStatus | null;
     onConfigChange: <K extends keyof EdgeConfig>(key: K, value: EdgeConfig[K]) => void;
     onRoutesTextChange: (value: string) => void;
     onRulesTextChange: (value: string) => void;
@@ -14,12 +15,33 @@ export function AdvancedEdgeOptions({
     config,
     routesText,
     rulesText,
+    environment,
     onConfigChange,
     onRoutesTextChange,
     onRulesTextChange,
 }: AdvancedEdgeOptionsProps) {
+    const bundledEdgePath = environment?.edgePath || 'Bundled edge will be resolved at runtime';
+
     return (
         <div className="advanced-panel">
+            <FormField label="edge binary">
+                <div className="custom-edge-control">
+                    <label>
+                        <input
+                            type="checkbox"
+                            checked={config.allowCustomEdgePath}
+                            onChange={(event) => onConfigChange('allowCustomEdgePath', event.target.checked)}
+                        />
+                        Use custom edge binary
+                    </label>
+                    <input
+                        value={config.allowCustomEdgePath ? config.edgePath : bundledEdgePath}
+                        onChange={(event) => onConfigChange('edgePath', event.target.value)}
+                        disabled={!config.allowCustomEdgePath}
+                        placeholder="Bundled edge"
+                    />
+                </div>
+            </FormField>
             <div className="field-grid">
                 <FormField label="cipher">
                     <select value={config.cipher} onChange={(event) => onConfigChange('cipher', event.target.value)}>

@@ -23,7 +23,7 @@ func PrivilegedHelperCommand(ctx context.Context, exe string, helperArgs ...stri
 		return nil, errors.New("pkexec or desktop authentication session is not available")
 	}
 	args := []string{"env"}
-	for _, key := range []string{"DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS"} {
+	for _, key := range privilegedHelperEnvKeys() {
 		if value := os.Getenv(key); value != "" {
 			args = append(args, key+"="+value)
 		}
@@ -31,4 +31,15 @@ func PrivilegedHelperCommand(ctx context.Context, exe string, helperArgs ...stri
 	args = append(args, exe)
 	args = append(args, helperArgs...)
 	return exec.CommandContext(ctx, "pkexec", args...), nil
+}
+
+func privilegedHelperEnvKeys() []string {
+	return []string{
+		"DISPLAY",
+		"XAUTHORITY",
+		"WAYLAND_DISPLAY",
+		"XDG_RUNTIME_DIR",
+		"DBUS_SESSION_BUS_ADDRESS",
+		"SWIFTN2N_ALLOW_CUSTOM_EDGE_PATH",
+	}
 }

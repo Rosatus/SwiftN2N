@@ -62,13 +62,6 @@ export function ConfigPanel({
             <EnvironmentPanel environment={environment}/>
 
             <div className="field-stack">
-                <FormField label="edge binary">
-                    <input
-                        value={config.edgePath}
-                        onChange={(event) => onConfigChange('edgePath', event.target.value)}
-                        placeholder="Auto: bin/linux/amd64/edge"
-                    />
-                </FormField>
                 <FormField label="supernode">
                     <textarea
                         value={supernodesText}
@@ -118,6 +111,7 @@ export function ConfigPanel({
                     config={config}
                     routesText={routesText}
                     rulesText={rulesText}
+                    environment={environment}
                     onConfigChange={onConfigChange}
                     onRoutesTextChange={onRoutesTextChange}
                     onRulesTextChange={onRulesTextChange}

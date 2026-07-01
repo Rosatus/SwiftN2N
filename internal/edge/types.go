@@ -13,6 +13,7 @@ const (
 
 type Config struct {
 	EdgePath            string   `json:"edgePath"`
+	AllowCustomEdgePath bool     `json:"allowCustomEdgePath"`
 	Supernodes          []string `json:"supernodes"`
 	Community           string   `json:"community"`
 	Address             string   `json:"address"`

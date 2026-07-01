@@ -2,6 +2,7 @@ export type EdgeState = 'idle' | 'starting' | 'connecting' | 'connected' | 'fail
 
 export type EdgeConfig = {
     edgePath: string;
+    allowCustomEdgePath: boolean;
     supernodes: string[];
     community: string;
     address: string;
@@ -60,7 +61,9 @@ export type EnvironmentStatus = {
     message: string;
 }
 
-const storageKey = 'swiftn2n:edge-config:v1';
+const storageKey = 'swiftn2n:edge-config:v2';
+const legacyStorageKey = 'swiftn2n:edge-config:v1';
+const schemaVersion = 2;
 
 export const initialStatus: EdgeStatus = {
     state: 'idle',
@@ -74,6 +77,7 @@ export const initialStatus: EdgeStatus = {
 
 export const initialConfig: EdgeConfig = {
     edgePath: '',
+    allowCustomEdgePath: false,
     supernodes: ['127.0.0.1:7777'],
     community: 'swift-lan',
     address: '10.10.10.12',
@@ -128,18 +132,10 @@ export function loadStoredConfig(): EdgeConfig {
     try {
         const raw = localStorage.getItem(storageKey);
         if (!raw) {
-            return initialConfig;
+            const legacy = localStorage.getItem(legacyStorageKey);
+            return legacy ? normalizeStoredConfig(JSON.parse(legacy) as Partial<EdgeConfig>, true) : initialConfig;
         }
-        const parsed = JSON.parse(raw) as Partial<EdgeConfig>;
-        return {
-            ...initialConfig,
-            ...parsed,
-            key: '',
-            authPassword: '',
-            supernodes: Array.isArray(parsed.supernodes) ? parsed.supernodes : initialConfig.supernodes,
-            routes: Array.isArray(parsed.routes) ? parsed.routes : [],
-            trafficRules: Array.isArray(parsed.trafficRules) ? parsed.trafficRules : [],
-        };
+        return normalizeStoredConfig(JSON.parse(raw) as Partial<EdgeConfig>);
     } catch {
         return initialConfig;
     }
@@ -156,7 +152,11 @@ export function saveStoredConfig(config: EdgeConfig) {
 
 export function exportableConfig(config: EdgeConfig) {
     const {key: _key, authPassword: _authPassword, ...safeConfig} = config;
-    return safeConfig;
+    return {
+        ...safeConfig,
+        schemaVersion,
+        edgePath: safeConfig.allowCustomEdgePath ? safeConfig.edgePath : '',
+    };
 }
 
 export function serializeConfig(config: EdgeConfig) {
@@ -168,6 +168,25 @@ export function parseConfigJson(value: string): EdgeConfig {
     return {
         ...initialConfig,
         ...parsed,
+        edgePath: '',
+        allowCustomEdgePath: false,
+        key: '',
+        authPassword: '',
+        supernodes: Array.isArray(parsed.supernodes) ? parsed.supernodes : initialConfig.supernodes,
+        routes: Array.isArray(parsed.routes) ? parsed.routes : [],
+        trafficRules: Array.isArray(parsed.trafficRules) ? parsed.trafficRules : [],
+    };
+}
+
+function normalizeStoredConfig(parsed: Partial<EdgeConfig>, legacy = false): EdgeConfig {
+    const allowCustomEdgePath = parsed.allowCustomEdgePath === true && !legacy;
+    return {
+        ...initialConfig,
+        ...parsed,
+        edgePath: allowCustomEdgePath ? parsed.edgePath || '' : '',
+        allowCustomEdgePath,
+        headerEncryption: legacy ? false : parsed.headerEncryption ?? initialConfig.headerEncryption,
+        verbose: legacy ? 0 : parsed.verbose ?? initialConfig.verbose,
         key: '',
         authPassword: '',
         supernodes: Array.isArray(parsed.supernodes) ? parsed.supernodes : initialConfig.supernodes,

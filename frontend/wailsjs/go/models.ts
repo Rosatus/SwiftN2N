@@ -2,6 +2,7 @@ export namespace edge {
 	
 	export class Config {
 	    edgePath: string;
+	    allowCustomEdgePath: boolean;
 	    supernodes: string[];
 	    community: string;
 	    address: string;
@@ -32,6 +33,7 @@ export namespace edge {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.edgePath = source["edgePath"];
+	        this.allowCustomEdgePath = source["allowCustomEdgePath"];
 	        this.supernodes = source["supernodes"];
 	        this.community = source["community"];
 	        this.address = source["address"];
@@ -110,4 +112,3 @@ export namespace edge {
 	}
 
 }
-

@@ -4,6 +4,18 @@
 
 最后更新：2026-06-30
 
+## 开源成熟度更新
+
+- SwiftN2N 源码采用 AGPL-3.0-only，仓库根目录包含 `LICENSE`。
+- 发行包应携带 `LICENSE` 和 `THIRD_PARTY_NOTICES.md`。
+- Linux privileged helper 默认只应执行 bundled `edge`。自定义 `edgePath`
+  属于高级/开发者能力，helper 默认拒绝；仅本地开发可设置
+  `SWIFTN2N_ALLOW_CUSTOM_EDGE_PATH=1`。
+- n2n Windows/macOS 源码构建使用上游 tag `3.0`，并校验 commit
+  `66f557af97b9c2ad42537516101fd04df2639ef0`。
+- `scripts/generate-compliance-reports.mjs` 会生成 `DEPENDENCY_LICENSES.md`
+  和 CycloneDX `sbom.cdx.json`，发行包会携带这两个文件。
+
 ## 当前结论
 
 SwiftN2N 是一个 Wails v2 桌面 GUI，用来启动、停止和观察官方 n2n v3 `edge` 二进制。项目不编译、不 patch n2n 源码，只负责：
@@ -86,6 +98,7 @@ cd frontend && npm install
 ```bash
 make test
 cd frontend && npm run build
+cd frontend && npm test
 cd frontend && npm audit --audit-level=high
 ```
 
@@ -224,6 +237,9 @@ type Config struct {
 
 - `key`
 - `authPassword`
+
+导入 profile 会清空 `edgePath` 并关闭 custom edge path，避免 profile
+静默改变 privileged helper 的执行目标。
 
 日志输出会对 secrets 做 redact。
 
@@ -679,9 +695,8 @@ cd frontend && npm audit --audit-level=high
 优先级从高到低：
 
 1. 增加配置迁移版本号
-   - 当前 localStorage 旧值可能覆盖新默认值。
-   - 建议 storage key 或 profile schema 加 version。
-   - 可对旧配置自动把 `headerEncryption=true` 改为 false，但要谨慎，避免破坏其他用户环境。
+   - 已新增 `swiftn2n:edge-config:v2` 和 legacy v1 迁移。
+   - v1 迁移会关闭 `headerEncryption`、重置 `verbose=0` 并清空自定义 edgePath。
 
 2. 增加 Connection Health 面板
    - 显示 last ACK 时间。

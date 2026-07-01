@@ -73,9 +73,13 @@ func RunEdgeHelper(stdin io.Reader, stdout io.Writer) int {
 		return 2
 	}
 
-	edgePath, err := ResolvePath(config.EdgePath)
+	resolved, err := ResolveConfiguredPath(config)
 	if err != nil {
 		emit(HelperEvent{Type: "error", Message: err.Error()})
+		return 1
+	}
+	if resolved.Custom && !CustomEdgePathAllowedForHelper() {
+		emit(HelperEvent{Type: "error", Message: "custom edge binaries are disabled for the privileged helper; use the bundled edge or set SWIFTN2N_ALLOW_CUSTOM_EDGE_PATH=1 for development"})
 		return 1
 	}
 	spec, err := BuildCommand(config)
@@ -83,12 +87,12 @@ func RunEdgeHelper(stdin io.Reader, stdout io.Writer) int {
 		emit(HelperEvent{Type: "error", Message: err.Error()})
 		return 1
 	}
-	if !platform.IsExecutable(edgePath) {
+	if !platform.IsExecutable(resolved.Path) {
 		emit(HelperEvent{Type: "error", Message: "edge binary is not executable"})
 		return 1
 	}
 
-	cmd := exec.Command(edgePath, spec.Args...)
+	cmd := exec.Command(resolved.Path, spec.Args...)
 	cmd.Env = append(os.Environ(), spec.Env...)
 	platform.ConfigureProcess(cmd)
 

@@ -4,7 +4,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 target_os="${1:-$(go env GOOS 2>/dev/null || uname -s | tr '[:upper:]' '[:lower:]')}"
 target_arch="${2:-$(go env GOARCH 2>/dev/null || uname -m)}"
-n2n_ref="${N2N_REF:-3.0-stable}"
+n2n_ref="${N2N_REF:-3.0}"
+n2n_expected_commit="${N2N_EXPECTED_COMMIT:-66f557af97b9c2ad42537516101fd04df2639ef0}"
 n2n_repo="${N2N_REPO:-https://github.com/ntop/n2n.git}"
 
 case "$target_os" in
@@ -20,7 +21,7 @@ case "$target_os" in
     ;;
 esac
 
-cache_dir="${repo_root}/.cache/n2n-src/${n2n_ref}"
+cache_dir="${repo_root}/.cache/n2n-src/${n2n_expected_commit}"
 build_dir="${repo_root}/.cache/n2n-build/${target_os}-${target_arch}"
 edge_out="${repo_root}/bin/${target_os}/${target_arch}/${edge_name}"
 
@@ -32,7 +33,13 @@ if [[ ! -d "${cache_dir}/.git" ]]; then
 else
   git -C "$cache_dir" fetch --depth 1 origin "$n2n_ref"
   git -C "$cache_dir" checkout "$n2n_ref"
-  git -C "$cache_dir" reset --hard "origin/${n2n_ref}"
+fi
+actual_commit="$(git -C "$cache_dir" rev-parse HEAD)"
+if [[ "$actual_commit" != "$n2n_expected_commit" ]]; then
+  echo "unexpected n2n source commit for ${n2n_ref}" >&2
+  echo "expected: ${n2n_expected_commit}" >&2
+  echo "actual:   ${actual_commit}" >&2
+  exit 1
 fi
 
 rm -rf "$build_dir"

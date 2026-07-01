@@ -7,6 +7,24 @@ The app does not compile or modify n2n. It locates and starts an `edge` binary,
 streams stdout/stderr into the UI, maps known log lines into connection status,
 and stops the process tree cleanly.
 
+## Project Status
+
+SwiftN2N is early-stage desktop networking software.
+
+| Platform | Status | Notes |
+| --- | --- | --- |
+| Linux amd64 | Supported for development and release archives | Uses the bundled n2n `edge` and Polkit/`pkexec` for privileged startup. |
+| Windows amd64 | Experimental | CI builds an archive and the manifest requests administrator privileges, but TAP/driver and process-tree behavior still need regular real-machine validation. |
+| macOS amd64 | Experimental / not yet recommended | CI builds an app bundle, but a native privileged helper flow is not implemented yet. |
+
+## License
+
+SwiftN2N is licensed under the GNU Affero General Public License v3.0 only.
+See `LICENSE`.
+
+Release archives may include an upstream n2n `edge` binary licensed under the
+GNU General Public License v3.0. See `THIRD_PARTY_NOTICES.md`.
+
 ## Stack
 
 - Wails v2
@@ -30,7 +48,24 @@ and stops the process tree cleanly.
 
 ## Edge Binary Resolution
 
-At startup SwiftN2N searches for `edge` in this order:
+By default, SwiftN2N uses the bundled `edge` binary packaged next to the app:
+
+```text
+bin/<goos>/<goarch>/edge
+```
+
+During development it also checks the repository-local `bin/` directory.
+
+Advanced users can enable a custom `edge` binary path in the UI. For safety,
+custom `edge` paths are disabled for the Linux privileged helper by default; the
+helper is intended to start the bundled binary, not arbitrary executables. For
+local development only, set:
+
+```sh
+SWIFTN2N_ALLOW_CUSTOM_EDGE_PATH=1
+```
+
+The legacy resolution order used by lower-level helpers is:
 
 1. GUI `edgePath`
 2. `SWIFTN2N_EDGE_PATH`
@@ -86,6 +121,8 @@ bundles the resulting binary into the application package.
 - `authPassword` is passed through `N2N_PASSWORD`.
 - `key` and `authPassword` are not persisted to local storage.
 - Process output and exit messages are redacted before they are emitted to the UI.
+- Imported profiles cannot silently enable a custom `edge` binary path.
+- Report vulnerabilities privately; see `SECURITY.md`.
 
 ## Development
 
@@ -106,8 +143,10 @@ Run tests and frontend build:
 
 ```sh
 make test
-make frontend-build
+make frontend-test
+go vet ./...
 make audit
+make compliance
 ```
 
 Run the Wails app:
@@ -131,7 +170,8 @@ make release-linux
 The archive is written to:
 
 ```text
-dist/SwiftN2N-linux-amd64.tar.gz
+dist/SwiftN2N-<version>-linux-amd64.tar.gz
+dist/SwiftN2N-<version>-linux-amd64.tar.gz.sha256
 ```
 
 Prepare the edge binary for the current platform:
@@ -157,6 +197,15 @@ darwin/amd64
 
 Pushes to `main`/`master` and pull requests upload workflow artifacts. Pushing a
 tag like `v0.1.0` also uploads the generated archives to the GitHub Release.
+Each package command also writes a `.sha256` file next to the archive.
+Release archives include:
+
+```text
+LICENSE
+THIRD_PARTY_NOTICES.md
+DEPENDENCY_LICENSES.md
+sbom.cdx.json
+```
 
 On Ubuntu/Pop!_OS 24.04, Wails v2 should be built against WebKitGTK 4.1:
 
@@ -197,3 +246,13 @@ user.
 `Check Edge` verifies the currently selected edge binary path, executable
 permission, privilege state, and edge version output. It does not start a VPN
 connection.
+
+The `edge binary` field lives under advanced settings. With the custom-path
+toggle off, the displayed path is the resolved bundled binary and the saved
+profile keeps `edgePath` empty so packages remain relocatable.
+
+## Contributing
+
+See `CONTRIBUTING.md` for local checks and contribution expectations. Notable
+changes should be recorded in `CHANGELOG.md`. Project spaces follow
+`CODE_OF_CONDUCT.md`.
