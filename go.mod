@@ -1,10 +1,10 @@
 module SwiftN2N
 
-go 1.23.0
+go 1.26.0
 
 require (
 	github.com/wailsapp/wails/v2 v2.12.0
-	golang.org/x/sys v0.30.0
+	golang.org/x/sys v0.48.0
 )
 
 require (
